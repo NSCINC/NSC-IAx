@@ -1,0 +1,112 @@
+const { Pool } = require('pg');
+
+// Configuração da conexão com o banco de dados
+const pool = new Pool({
+    user: 'yourUsername', // substitua pelo seu nome de usuário do banco de dados
+    host: 'localhost',    // substitua pelo endereço do seu banco de dados
+    database: 'yourDatabaseName', // substitua pelo nome do seu banco de dados
+    password: 'yourPassword', // substitua pela sua senha do banco de dados
+    port: 5432,            // substitua pela porta do seu banco de dados, 5432 é o padrão para PostgreSQL
+});
+
+// Função para criar tabelas
+const createTables = async () => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        // Criação da tabela de planos de investimento
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS investment_plans (
+                id SERIAL PRIMARY KEY,
+                plan_name VARCHAR(255) UNIQUE NOT NULL,
+                initial_investment INTEGER NOT NULL,
+                monthly_return INTEGER NOT NULL,
+                annual_return INTEGER NOT NULL,
+                net_annual_return INTEGER NOT NULL,
+                slots INTEGER NOT NULL
+            )
+        `);
+        // Criação da tabela de investimentos
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS investments (
+                id SERIAL PRIMARY KEY,
+                plan_name VARCHAR(255) REFERENCES investment_plans(plan_name),
+                amount INTEGER NOT NULL,
+                investor_address VARCHAR(255) NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await client.query('COMMIT');
+        console.log('Tables created successfully!');
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error creating tables:', error);
+    } finally {
+        client.release();
+    }
+};
+
+// Função para adicionar um plano de investimento
+const addInvestmentPlan = async (plan) => {
+    const client = await pool.connect();
+    try {
+        const { plan_name, initial_investment, monthly_return, annual_return, net_annual_return, slots } = plan;
+        await client.query('BEGIN');
+        await client.query(`
+            INSERT INTO investment_plans (plan_name, initial_investment, monthly_return, annual_return, net_annual_return, slots)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (plan_name) DO NOTHING
+        `, [plan_name, initial_investment, monthly_return, annual_return, net_annual_return, slots]);
+        await client.query('COMMIT');
+        console.log('Investment plan added successfully!');
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error adding investment plan:', error);
+    } finally {
+        client.release();
+    }
+};
+
+// Função para investir em um plano
+const investInPlan = async (investment) => {
+    const client = await pool.connect();
+    try {
+        const { plan_name, amount, investor_address } = investment;
+        await client.query('BEGIN');
+        await client.query(`
+            INSERT INTO investments (plan_name, amount, investor_address)
+            VALUES ($1, $2, $3)
+        `, [plan_name, amount, investor_address]);
+        await client.query('COMMIT');
+        console.log('Investment completed successfully!');
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error completing investment:', error);
+    } finally {
+        client.release();
+    }
+};
+
+// Função de teste
+const testDatabase = async () => {
+    await createTables();
+    await addInvestmentPlan({
+        plan_name: 'testPlan',
+        initial_investment: 1000,
+        monthly_return: 10,
+        annual_return: 120,
+        net_annual_return: 600,
+        slots: 1000
+    });
+    await investInPlan({
+        plan_name: 'testPlan',
+        amount: 500,
+        investor_address: '0x4444444444444444444444444444444444444444'
+    });
+};
+
+// Execute a função de teste
+testDatabase()
+    .then(() => console.log('Database setup and test completed.'))
+    .catch(err => console.error('Error during database setup and test:', err))
+    .finally(() => pool.end());
