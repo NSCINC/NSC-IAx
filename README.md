@@ -98,4 +98,3 @@ Thank you for your attention!
 
 ---
 
-Se precisar de mais alguma alteração, estou à disposição!
