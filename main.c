@@ -1,3 +1,31 @@
+#include <stdio.h>
+#include "neural_network.h"
+#include "nsc_token_handler.h"
+
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        printf("Uso: ./main <token> <crm_data>\n");
+        return 1;
+    }
+
+    // Validar o token NSC
+    const char *token = argv[1];
+    if (!validate_nsc_token(token)) {
+        printf("Token NSC inválido\n");
+        return 1;
+    }
+
+    // Dados do CRM (Exemplo simplificado)
+    double crm_data[] = {500, 100, 5};  // Exemplo de dados de CRM
+    double output[1];
+
+    // Processar os dados do CRM com IA
+    process_crm_data(crm_data, 3, output);
+
+    printf("Predição de retorno: %f\n", output[0]);
+
+    return 0;
+}
 // Importa os módulos necessários
 const express = require('express');
 const { exec } = require('child_process');
